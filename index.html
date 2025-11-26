@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Instamart-style Demo (Swiggy-style UI)</title>
+<style>
+  :root{
+    --brand:#ff6b00; /* swiggy-like orange (legal, original design) */
+    --bg:#f6f7fb;
+    --card:#fff;
+    --muted:#6b7280;
+    --accent:#0f172a;
+    --radius:12px;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background:var(--bg);
+    color:#0b1220;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* HEADER */
+  header.appbar{
+    position:sticky;
+    top:0;
+    background:var(--brand);
+    color:white;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    padding:12px 16px;
+    z-index:50;
+    box-shadow:0 6px 18px rgba(15,23,42,0.12);
+  }
+  .logo {
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .logo svg { width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,0.08); padding:6px;}
+  .brand-title { font-weight:700; font-size:18px; letter-spacing:0.2px; }
+  .brand-sub { font-size:12px; opacity:0.95; margin-left:4px; color:rgba(255,255,255,0.95) }
+
+  .search-wrap { margin-left:18px; flex:1; display:flex; align-items:center; gap:8px; }
+  .search {
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.12);
+    padding:8px 12px; border-radius:999px; width:100%;
+  }
+  .search input{
+    width:100%; border:0; background:transparent; color:white; outline:none;
+    font-size:14px;
+  }
+  .cart-btn {
+    background:rgba(255,255,255,0.12);
+    padding:8px 12px; border-radius:10px; cursor:pointer;
+    display:flex; gap:8px; align-items:center; color:white;
+  }
+
+  /* LAYOUT */
+  .wrap { display:flex; gap:24px; padding:20px; max-width:1100px; margin:18px auto; }
+  .left { flex:0 0 260px; }
+  .main { flex:1; min-width:350px; }
+  .right { flex:0 0 360px; }
+
+  /* CATEGORIES */
+  .card { background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:0 6px 18px rgba(15,23,42,0.06); }
+  .categories { display:flex; flex-direction:column; gap:12px; }
+  .category {
+    display:flex; gap:12px; align-items:center; padding:8px; border-radius:10px; cursor:pointer;
+    transition:all .18s ease; border:1px solid transparent;
+  }
+  .category:hover { transform:translateY(-3px); box-shadow:0 6px 14px rgba(15,23,42,0.05); border-color:rgba(0,0,0,0.04); }
+  .category .ico { width:44px; height:44px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(160deg,#fff,#fff); }
+  .category .text { font-weight:600; }
+
+  .category.active { background:linear-gradient(90deg, rgba(255,107,0,0.06), rgba(255,107,0,0.03)); border-color:rgba(255,107,0,0.14); }
+
+  /* MAIN - products */
+  .controls { display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip {
+    padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #e6e9ef; cursor:pointer; font-size:13px;
+  }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:14px; }
+
+  .product {
+    border-radius:12px; overflow:hidden; background:linear-gradient(180deg,#fff,#fbfbfb); position:relative;
+    border:1px solid #eef2f7; padding:12px; display:flex; flex-direction:column; gap:8px;
+  }
+  .product .thumb { height:130px; border-radius:10px; background:#f4f6fb; display:grid; place-items:center; }
+  .product h4 { margin:0; font-size:16px; }
+  .product p { margin:0; color:var(--muted); font-size:13px; }
+  .price-row { display:flex; justify-content:space-between; align-items:center; margin-top:auto; }
+  .add-btn { background:var(--brand); color:white; font-weight:700; border-radius:10px; padding:8px 10px; cursor:pointer; border:0; }
+
+  /* CART (right) */
+  .cart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .cart-items { max-height:420px; overflow:auto; display:flex; flex-direction:column; gap:10px; padding-right:6px; }
+  .cart-item { display:flex; gap:10px; align-items:center; padding:8px; border-radius:10px; background:#fff; border:1px solid #eef2f7; }
+  .qty { display:flex; gap:6px; align-items:center; }
+  .qty button{ background:#f3f4f6; border:0; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .checkout { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+
+  /* MODALS / CHECKOUT */
+  .overlay { position:fixed; inset:0; background:rgba(8,12,20,0.45); display:none; align-items:center; justify-content:center; z-index:80; }
+  .modal { width:420px; background:var(--card); padding:18px; border-radius:14px; box-shadow:0 10px 30px rgba(2,6,23,0.35); }
+  .slot-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .slot { padding:10px; border-radius:8px; border:1px dashed #e6e9ef; cursor:pointer; text-align:center; }
+  .slot.full { opacity:0.5; pointer-events:none; }
+  .slot.selected { background:rgba(255,107,0,0.08); border:1px solid rgba(255,107,0,0.18); }
+
+  .pay-row { display:flex; gap:8px; align-items:center; }
+  .pay-row input { width:100%; padding:10px; border-radius:8px; border:1px solid #e6e9ef; }
+
+  /* ORDER CONFIRM */
+  .confirm { text-align:center; padding:22px; }
+  .invoice { margin-top:12px; background:#fff; padding:12px; border-radius:10px; border:1px solid #eef2f7; }
+
+  /* Responsive */
+  @media (max-width:900px){
+    .wrap { flex-direction:column; padding:12px; }
+    .left, .right { flex:unset; width:100%; }
+    .right { order:3 }
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="logo">
+    <!-- legal app-style teardrop logo (inline SVG) -->
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#ff8a34"/><stop offset="1" stop-color="#ff5a00"/></linearGradient></defs>
+      <path fill="url(#g1)" d="M32 4c6.6 0 16 7.2 16 18 0 14-16 30-16 30S16 36 16 22C16 11.2 25.4 4 32 4z"/>
+      <circle cx="32" cy="20" r="6" fill="white" opacity="0.9"/>
+    </svg>
+  </div>
+  <div style="display:flex;flex-direction:column">
+    <div class="brand-title">InstaMart — Demo</div>
+    <div class="brand-sub">Quick groceries & essentials</div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="globalSearch" placeholder="Search items, e.g. Rice, Mobile..." />
+    </div>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center;">
+    <div class="cart-btn" id="cartToggle">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:0.95"><path d="M3 3h2l.4 2M7 13h10l3-8H6.4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div id="cartCount" style="font-weight:700;">0</div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<div class="wrap">
+  <!-- LEFT: categories -->
+  <aside class="left">
+    <div class="card">
+      <h3 style="margin:0 0 10px 0">Categories</h3>
+      <div class="categories" id="categoryList">
+        <!-- categories injected -->
+      </div>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="card">
+      <h4 style="margin:0 0 6px 0">Quick Filters</h4>
+      <div class="chips" id="filters">
+        <div class="chip" onclick="filterPrice('low')">Under ₹500</div>
+        <div class="chip" onclick="filterPrice('med')">₹500 - ₹1500</div>
+        <div class="chip" onclick="filterPrice('high')">Above ₹1500</div>
+        <div class="chip" onclick="resetFilters()">Clear</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN: products -->
+  <main class="main">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div>
+          <h3 id="mainTitle" style="margin:0">Featured</h3>
+          <p style="margin:4px 0 0 0; color:var(--muted); font-size:13px" id="subtitle">Browse categories to view products</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="sorter" onchange="applySort()" style="padding:8px; border-radius:8px; border:1px solid #e6e9ef">
+            <option value="">Sort By</option>
+            <option value="price-asc">Price low → high</option>
+            <option value="price-desc">Price high → low</option>
+            <option value="name">Name A → Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="controls">
+        <div style="flex:1">
+          <input id="searchLocal" placeholder="Search inside current category..." oninput="searchInCategory()" style="padding:9px;border-radius:8px;border:1px solid #e6e9ef;width:100%" />
+        </div>
+      </div>
+
+      <div id="productGrid" class="grid" style="margin-top:12px">
+        <!-- products inserted here -->
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT: cart -->
+  <aside class="right">
+    <div class="card">
+      <div class="cart-header">
+        <div>
+          <h3 style="margin:0">Cart</h3>
+          <div style="font-size:13px; color:var(--muted)">Your selected items</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700" id="cartTotalAmt">₹0</div>
+          <div style="font-size:12px;color:var(--muted)">(incl. tax)</div>
+        </div>
+      </div>
+
+      <div class="cart-items" id="cartItems">
+        <!-- cart items -->
+      </div>
+
+      <div class="checkout">
+        <button onclick="openSlots()" style="padding:12px;border-radius:10px;background:var(--brand);color:white;border:0;font-weight:700;">Select Delivery Slot & Checkout</button>
+        <div style="font-size:13px;color:var(--muted); margin-top:6px;">You can change slot on checkout page</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- Overlay modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalContent">
+    <!-- slot selection / payment steps injected -->
+  </div>
+</div>
+
+<script>
+/* ====== Demo Data ====== */
+const CATEGORIES = [
+  { id:'electronics', title:'Electronics', icon: '⚡' },
+  { id:'clothes', title:'Clothes', icon: '👚' },
+  { id:'toys', title:'Toys', icon: '🧸' },
+  { id:'snacks', title:'Snacks', icon: '🍿' },
+  { id:'grocery', title:'Grocery', icon: '🛒' },
+  { id:'fruits', title:'Fruits', icon: '🍎' }
+];
+
+const PRODUCTS = {
+  electronics: [
+    { id:'e1', name:'Bluetooth Speaker', price:799, stock:10 },
+    { id:'e2', name:'Smart Watch', price:1499, stock:6 },
+    { id:'e3', name:'Earbuds', price:1299, stock:15 }
+  ],
+  clothes: [
+    { id:'c1', name:'Men Shirt', price:599, stock:20 },
+    { id:'c2', name:'Jeans', price:999, stock:12 },
+    { id:'c3', name:'Sport Jacket', price:1599, stock:5 }
+  ],
+  toys: [
+    { id:'t1', name:'Remote Car', price:650, stock:8 },
+    { id:'t2', name:'Puzzle Set', price:250, stock:30 },
+    { id:'t3', name:'Action Figure', price:450, stock:18 }
+  ],
+  snacks: [
+    { id:'s1', name:'Potato Chips', price:40, stock:100 },
+    { id:'s2', name:'Chocolate Bar', price:50, stock:80 },
+    { id:'s3', name:'Cookies Pack', price:120, stock:60 }
+  ],
+  grocery: [
+    { id:'g1', name:'Rice 5kg', price:350, stock:40 },
+    { id:'g2', name:'Atta 5kg', price:420, stock:35 },
+    { id:'g3', name:'Cooking Oil 1L', price:210, stock:25 }
+  ],
+  fruits: [
+    { id:'f1', name:'Banana Bunch', price:60, stock:50 },
+    { id:'f2', name:'Apple (1kg)', price:180, stock:25 },
+    { id:'f3', name:'Orange (1kg)', price:140, stock:30 }
+  ]
+};
+
+/* ====== State ====== */
+let currentCategory = null;
+let visibleProducts = []; // currently shown
+let cart = []; // {id,name,price,qty}
+
+/* ====== UI Init ====== */
+function init(){
+  renderCategories();
+  // show featured (electronics)
+  selectCategory('electronics');
+  // hook header search
+  document.getElementById('globalSearch').addEventListener('input', (e)=>{
+    const q=e.target.value.trim().toLowerCase();
+    if(!q) { // empty => show category defaults
+      selectCategory(currentCategory || 'electronics');
+      return;
+    }
+    // search across all
+    const results=[];
+    Object.keys(PRODUCTS).forEach(cat=>{
+      PRODUCTS[cat].forEach(p=>{
+        if(p.name.toLowerCase().includes(q)) results.push({...p, cat});
+      });
+    });
+    visibleProducts = results;
+    renderProducts();
+    document.getElementById('mainTitle').innerText = `Search results for "${q}"`;
+    document.getElementById('subtitle').innerText = `${results.length} item(s) found`;
+  });
+  updateCartUI();
+}
+window.onload = init;
+
+/* ====== Categories ====== */
+function renderCategories(){
+  const el = document.getElementById('categoryList');
+  el.innerHTML = '';
+  CATEGORIES.forEach(c=>{
+    const div = document.createElement('div');
+    div.className='category';
+    div.id='cat-'+c.id;
+    div.innerHTML = `<div class="ico" style="font-size:20px">${c.icon}</div><div class="text">${c.title}</div>`;
+    div.onclick = ()=>selectCategory(c.id);
+    el.appendChild(div);
+  });
+}
+
+function selectCategory(id){
+  currentCategory=id;
+  // active state
+  document.querySelectorAll('.category').forEach(n=>n.classList.remove('active'));
+  const activeEl = document.getElementById('cat-'+id);
+  if(activeEl) activeEl.classList.add('active');
+  // set title
+  const catObj = CATEGORIES.find(c=>c.id===id);
+  document.getElementById('mainTitle').innerText = catObj ? catObj.title : 'Products';
+  document.getElementById('subtitle').innerText = 'Best deals in ' + (catObj ? catObj.title : '');
+  visibleProducts = PRODUCTS[id].slice();
+  renderProducts();
+}
+
+/* ====== Products UI ====== */
+function renderProducts(){
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML='';
+  if(visibleProducts.length===0){
+    grid.innerHTML = '<div style="padding:18px;color:var(--muted);">No items found</div>';
+    return;
+  }
+  visibleProducts.forEach(p=>{
+    const card = document.createElement('div');
+    card.className='product';
+    card.innerHTML = `
+      <div class="thumb"><svg width="120" height="80" viewBox="0 0 120 80"><rect rx="12" width="120" height="80" fill="#f0f4ff"></rect><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#97a1b8">${p.name.split(' ')[0]}</text></svg></div>
+      <h4>${p.name}</h4>
+      <p>In stock: ${p.stock}</p>
+      <div class="price-row">
+        <div style="font-weight:700">₹${p.price}</div>
+        <button class="add-btn" onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price})">Add</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ====== Cart Logic ====== */
+function addToCart(id,name,price){
+  const prod = findProductById(id);
+  if(prod && prod.stock <= 0){ alert('Out of stock'); return; }
+  const existing = cart.find(item=>item.id===id);
+  if(existing){
+    existing.qty++;
+  } else {
+    cart.push({id,name,price,qty:1});
+  }
+  // reduce stock in dataset for demo
+  if(prod) prod.stock--;
+  renderProducts();
+  updateCartUI();
+}
+
+function findProductById(id){
+  for(const k in PRODUCTS){
+    const p = PRODUCTS[k].find(x=>x.id===id);
+    if(p) return p;
+  }
+  return null;
+}
+
+function updateCartUI(){
+  const list = document.getElementById('cartItems');
+  list.innerHTML='';
+  if(cart.length===0){
+    list.innerHTML = '<div style="color:var(--muted)">Your cart is empty</div>';
+  } else {
+    cart.forEach(item=>{
+      const div = document.createElement('div');
+      div.className='cart-item';
+      div.innerHTML = `
+        <div style="flex:1">
+          <div style="font-weight:700">${item.name}</div>
+          <div style="font-size:13px;color:var(--muted)">₹${item.price} each</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end">
+          <div class="qty">
+            <button onclick="changeQty('${item.id}', -1)">-</button>
+            <div style="padding:6px 10px">${item.qty}</div>
+            <button onclick="changeQty('${item.id}', 1)">+</button>
+          </div>
+          <div style="margin-top:8px;font-weight:700">₹${item.price*item.qty}</div>
+          <div style="margin-top:6px"><button onclick="removeFromCart('${item.id}')" style="background:transparent;border:0;color:#e11d48;cursor:pointer">Remove</button></div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  document.getElementById('cartTotalAmt').innerText = '₹' + total;
+  document.getElementById('cartCount').innerText = cart.reduce((s,i)=>s+i.qty,0);
+}
+
+function changeQty(id, delta){
+  const item = cart.find(i=>i.id===id);
+  if(!item) return;
+  if(delta>0){
+    // check stock
+    const prod = findProductById(id);
+    if(prod && prod.stock <= 0){ alert('No more stock available'); return; }
+    item.qty += delta;
+    if(prod) prod.stock--;
+  } else {
+    // returning to stock
+    item.qty += delta;
+    const prod = findProductById(id);
+    if(prod) prod.stock++;
+    if(item.qty <= 0) removeFromCart(id);
+  }
+  renderProducts();
+  updateCartUI();
+}
+
+function removeFromCart(id){
+  const idx = cart.findIndex(i=>i.id===id);
+  if(idx>-1){
+    // return qty to stock
+    const item = cart[idx];
+    const prod = findProductById(id);
+    if(prod) prod.stock += item.qty;
+    cart.splice(idx,1);
+    renderProducts();
+    updateCartUI();
+  }
+}
+
+/* ====== Filters & Sort ====== */
+function filterPrice(range){
+  if(!currentCategory) return;
+  if(range==='low') visibleProducts = PRODUCTS[currentCategory].filter(p=>p.price < 500);
+  if(range==='med') visibleProducts = PRODUCTS[currentCategory].filter(p=>p.price >= 500 && p.price <= 1500);
+  if(range==='high') visibleProducts = PRODUCTS[currentCategory].filter(p=>p.price > 1500);
+  renderProducts();
+}
+function resetFilters(){ visibleProducts = PRODUCTS[currentCategory].slice(); renderProducts(); }
+function applySort(){
+  const key = document.getElementById('sorter').value;
+  if(!key) { visibleProducts = PRODUCTS[currentCategory].slice(); renderProducts(); return; }
+  if(key==='price-asc') visibleProducts.sort((a,b)=>a.price-b.price);
+  if(key==='price-desc') visibleProducts.sort((a,b)=>b.price-a.price);
+  if(key==='name') visibleProducts.sort((a,b)=>a.name.localeCompare(b.name));
+  renderProducts();
+}
+function searchInCategory(){
+  const q = document.getElementById('searchLocal').value.trim().toLowerCase();
+  if(!q) { visibleProducts = PRODUCTS[currentCategory].slice(); renderProducts(); return; }
+  visibleProducts = PRODUCTS[currentCategory].filter(p=>p.name.toLowerCase().includes(q));
+  renderProducts();
+}
+
+/* ====== Checkout / Slots / Payment ====== */
+const SLOTS = [
+  { id:'slot1', text:'7 AM - 9 AM', capacity:3 },
+  { id:'slot2', text:'9 AM - 11 AM', capacity:3 },
+  { id:'slot3', text:'1 PM - 3 PM', capacity:2 },
+  { id:'slot4', text:'5 PM - 7 PM', capacity:1 },
+  { id:'slot5', text:'7 PM - 9 PM', capacity:0 } // full to demo
+];
+
+function openSlots(){
+  if(cart.length===0){ alert('Add items to cart before checkout'); return; }
+  showOverlay();
+  renderSlotsStep();
+}
+
+/* overlay / modal helpers */
+function showOverlay(){ document.getElementById('overlay').style.display='flex'; }
+function hideOverlay(){ document.getElementById('overlay').style.display='none'; }
+
+/* Step 1: slots */
+function renderSlotsStep(){
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `<h3>Select Delivery Slot</h3>
+    <div class="slot-grid" style="margin-top:10px;">
+      ${SLOTS.map(s=>`<div class="slot ${s.capacity===0?'full':''}" data-id="${s.id}" onclick="selectSlot(this,'${s.id}')">${s.text}<div style="font-size:12px;color:var(--muted);margin-top:6px">Available: ${s.capacity}</div></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="hideOverlay()" style="background:#eee;border-radius:8px;padding:8px 12px;border:0">Cancel</button>
+      <button onclick="goToPayment()" style="background:var(--brand);color:white;border-radius:8px;padding:8px 12px;border:0">Continue</button>
+    </div>
+  `;
+  selectedSlotId = null;
+}
+
+/* slot state */
+let selectedSlotId = null;
+function selectSlot(el,id){
+  document.querySelectorAll('.slot').forEach(n=>n.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedSlotId = id;
+}
+
+/* go to payment step */
+function goToPayment(){
+  if(!selectedSlotId){ alert('Select a slot'); return; }
+  renderPaymentStep();
+}
+
+function renderPaymentStep(){
+  const modal = document.getElementById('modalContent');
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  modal.innerHTML = `
+    <h3>Payment & Confirmation</h3>
+    <div style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between"><div>Items total</div><div>₹${total}</div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><div>Delivery</div><div>₹40</div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><div>GST (5%)</div><div>₹${Math.round(total*0.05)}</div></div>
+      <hr style="margin-top:10px" />
+      <div style="display:flex;justify-content:space-between;font-weight:700">Total Payable <div>₹${total + 40 + Math.round(total*0.05)}</div></div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label style="font-weight:600">Payment Method</label>
+      <select id="payMethod" style="width:100%;padding:8px;border-radius:8px;margin-top:8px">
+        <option value="">Select</option>
+        <option value="UPI">UPI</option>
+        <option value="COD">Cash on Delivery</option>
+      </select>
+    </div>
+
+    <div id="upiFields" style="display:none;margin-top:8px">
+      <input id="upiId" placeholder="UPI ID (example: name@bank)" />
+      <input id="upiPin" placeholder="Enter UPI PIN (demo: 1111)" />
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button onclick="renderSlotsStep()" style="background:#eee;border-radius:8px;padding:8px 12px;border:0">Back</button>
+      <button onclick="confirmOrder()" style="background:var(--brand);color:white;border-radius:8px;padding:8px 12px;border:0">Pay & Place Order</button>
+    </div>
+  `;
+
+  document.getElementById('payMethod').addEventListener('change', (e)=>{
+    document.getElementById('upiFields').style.display = e.target.value==='UPI' ? 'block' : 'none';
+  });
+}
+
+/* confirm order - simple validation */
+function confirmOrder(){
+  const method = document.getElementById('payMethod').value;
+  if(!method){ alert('Select payment method'); return; }
+
+  if(method==='UPI'){
+    const id = document.getElementById('upiId').value.trim();
+    const pin = document.getElementById('upiPin').value.trim();
+    if(!id || !pin){ alert('Enter UPI ID and PIN'); return; }
+    if(pin !== '1111'){ alert('Incorrect UPI PIN (demo pin is 1111)'); return; }
+  }
+
+  // decrement slot capacity
+  const slot = SLOTS.find(s=>s.id===selectedSlotId);
+  if(slot && slot.capacity>0) slot.capacity--;
+
+  // create order id
+  const orderId = 'ORD' + Math.floor(100000 + Math.random()*900000);
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const payable = total + 40 + Math.round(total*0.05);
+
+  renderConfirmation(orderId, payable);
+}
+
+/* confirmation UI */
+function renderConfirmation(orderId, payable){
+  const modal = document.getElementById('modalContent');
+  const itemsHtml = cart.map(i=>`<div style="display:flex;justify-content:space-between;padding:6px 0"><div>${i.name} x ${i.qty}</div><div>₹${i.price*i.qty}</div></div>`).join('');
+  modal.innerHTML = `
+    <div class="confirm">
+      <h2 style="margin:0;color:var(--brand)">✅ Order Confirmed</h2>
+      <div style="margin-top:8px">Order ID: <strong>${orderId}</strong></div>
+      <div style="margin-top:6px;color:var(--muted)">Delivery Slot: <strong>${SLOTS.find(s=>s.id===selectedSlotId).text}</strong></div>
+      <div class="invoice" style="margin-top:12px">
+        ${itemsHtml}
+        <hr />
+        <div style="display:flex;justify-content:space-between"><div>Delivery</div><div>₹40</div></div>
+        <div style="display:flex;justify-content:space-between"><div>GST</div><div>₹${Math.round((cart.reduce((s,i)=>s+i.price*i.qty,0))*0.05)}</div></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:8px"><div>Total</div><div>₹${payable}</div></div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <button onclick="downloadInvoice('${orderId}')" style="padding:8px 12px;border-radius:8px;border:0;background:#eee">Download Invoice</button>
+        <button onclick="finishOrder()" style="padding:8px 12px;border-radius:8px;background:var(--brand);color:white;border:0">Done</button>
+      </div>
+    </div>
+  `;
+  // clear cart in demo: after order placed
+}
+
+/* download invoice (simple print) */
+function downloadInvoice(orderId){
+  const modalHtml = document.getElementById('modalContent').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><title>Invoice - ' + orderId + '</title></head><body>');
+  w.document.write('<h2>Order Invoice</h2>');
+  w.document.write(modalHtml);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.print();
+}
+
+/* finish, clear cart and update */
+function finishOrder(){
+  // clear cart (demo)
+  cart = [];
+  updateCartUI();
+  // re-render product grid (stocks were already decremented)
+  renderProducts();
+  hideOverlay();
+  alert('Thank you! Your order is placed.');
+}
+
+/* close overlay when clicking outside modal */
+document.getElementById('overlay').addEventListener('click', function(e){
+  if(e.target.id === 'overlay'){ hideOverlay(); }
+});
+
+/* small utility: clicking cart opens checkout modal (slots) */
+document.getElementById('cartToggle').addEventListener('click', ()=> openSlots());
+
+</script>
+</body>
+</html>
